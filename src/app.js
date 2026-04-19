@@ -7,7 +7,7 @@ const smsRoutes = require('./routes/sms.routes');
 
 const app = express();
 
-// Middleware
+// ── Middleware ────────────────────────────────────────────────
 app.use(express.json());
 app.use(cors({
   origin: [
@@ -18,12 +18,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Health check
+// ── Health check (used by UptimeRobot to keep Render awake) ──
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
+// ── Root ─────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({ status: 'SimamiaKanisa API running', version: '1.0.0' });
 });
 
-// Routes — mounted at /api/sms so router.post('/send') = POST /api/sms/send
+// ── Routes ───────────────────────────────────────────────────
 app.use('/api/sms', smsRoutes);
 
 module.exports = app;
