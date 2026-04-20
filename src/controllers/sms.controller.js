@@ -186,6 +186,8 @@ async function getSmsLogByIdHandler(req, res) {
 // ─────────────────────────────────────────────────────────────
 // SEND EVENT SMS (bulk — queued)
 // ─────────────────────────────────────────────────────────────
+console.log('[sendEventSMS] SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'MISSING');
+console.log('[sendEventSMS] SERVICE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
 async function sendEventSMS(req, res) {
   const { eventId } = req.params;
   const { tenantId, sentBy, eventName, eventDate, eventTime, recipients } = req.body;
