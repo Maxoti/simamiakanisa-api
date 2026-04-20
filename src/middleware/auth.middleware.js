@@ -1,27 +1,20 @@
 const { createClient } = require('@supabase/supabase-js');
+const admin = require('../config/firebase-admin');
 
-// ── Lazy Supabase client ──────────────────────────────────────────────────────
-// Initialized on first request, not at module load time.
-// This prevents Jest (and any other tooling) from throwing during require()
-// before env vars are available.
 let _supabase = null;
 
 function getSupabase() {
   if (_supabase) return _supabase;
-
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
     throw new Error('Supabase environment variables are missing');
   }
-
   _supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_ANON_KEY
   );
-
   return _supabase;
 }
 
-// ── Auth Middleware ───────────────────────────────────────────────────────────
 async function auth(req, res, next) {
   const header = req.headers.authorization;
 
@@ -31,6 +24,16 @@ async function auth(req, res, next) {
 
   const token = header.split(' ')[1];
 
+  // ── Try Firebase first ───────────────────────────────
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = decoded;
+    return next();
+  } catch (firebaseErr) {
+    // not a Firebase token — try Supabase
+  }
+
+  // ── Fall back to Supabase ────────────────────────────
   try {
     const supabase = getSupabase();
     const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -40,7 +43,7 @@ async function auth(req, res, next) {
     }
 
     req.user = user;
-    next();
+    return next();
 
   } catch (err) {
     return res.status(401).json({ message: 'Invalid token' });
