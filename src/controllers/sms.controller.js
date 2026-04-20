@@ -5,7 +5,7 @@ const {
   getSmsStatsByTenant,
   createSmsLog
 } = require('../models/sms.model');
-const db = require('../config/supabase'); 
+const {supabaseAdmin:db }= require('../config/supabase'); 
 /**
  * Lazy-loaded queue accessor
  * Prevents Redis/Bull initialization during module import (fixes Jest leaks)

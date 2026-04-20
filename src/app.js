@@ -6,6 +6,7 @@ const cors    = require('cors');
 const smsRoutes = require('./routes/sms.routes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(express.json());
