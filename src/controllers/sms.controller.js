@@ -185,26 +185,18 @@ async function getSmsLogByIdHandler(req, res) {
 // ─────────────────────────────────────────────────────────────
 async function sendEventSMS(req, res) {
   const { eventId } = req.params;
-  const { tenantId, sentBy } = req.body;
+  const { tenantId, sentBy, eventName, eventDate, eventTime } = req.body;
 
   if (!tenantId || !eventId) {
     return res.status(400).json({ error: 'tenantId and eventId are required' });
   }
 
+  if (!eventName || !eventDate || !eventTime) {
+    return res.status(400).json({ error: 'eventName, eventDate and eventTime are required' });
+  }
+
   try {
-    // 1. Fetch event using Supabase client
-    const { data: eventData, error: eventError } = await db
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .eq('tenant_id', tenantId)
-      .single();
-
-    if (eventError || !eventData) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    // 2. Fetch members with phone numbers
+    // 1. Fetch members from Supabase
     const { data: members, error: membersError } = await db
       .from('members')
       .select('phone')
@@ -218,38 +210,32 @@ async function sendEventSMS(req, res) {
       return res.status(400).json({ error: 'No members with phone numbers found' });
     }
 
-    // 3. Build message
+    // 2. Build message from body data
     const message =
-      `Reminder: "${eventData.name}" on ${eventData.date} at ${eventData.time}. ` +
-      `Expected: ${eventData.expected} people. God bless you!`;
+      `Reminder: "${eventName}" on ${eventDate} at ${eventTime}. ` +
+      `God bless you!`;
 
-    // 4. Enqueue per recipient
+    // 3. Enqueue per recipient
     const { enqueueSms } = getQueue();
     const jobs = [];
 
     for (const m of members) {
       const phone = normalizePhone(m.phone);
-
-      const log = await createSmsLog(tenantId, {
+      const log   = await createSmsLog(tenantId, {
         recipient: phone,
         message,
         type:     'event_notification',
         sent_by:  sentBy ?? null
       });
-
       const job = await enqueueSms({
-        smsLogId:  log.id,
-        tenantId,
-        recipient: phone,
-        message
+        smsLogId: log.id, tenantId, recipient: phone, message
       });
-
       jobs.push({ phone, logId: log.id, jobId: job.id });
     }
 
     return res.status(202).json({
       success: true,
-      event:   eventData.name,
+      event:   eventName,
       queued:  jobs.length,
       jobs
     });
