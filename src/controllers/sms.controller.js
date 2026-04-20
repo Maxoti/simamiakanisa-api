@@ -219,19 +219,33 @@ async function sendEventSMS(req, res) {
     const { enqueueSms } = getQueue();
     const jobs = [];
 
-    for (const m of members) {
-      const phone = normalizePhone(m.phone);
-      const log   = await createSmsLog(tenantId, {
-        recipient: phone,
-        message,
-        type:     'event_notification',
-        sent_by:  sentBy ?? null
-      });
-      const job = await enqueueSms({
-        smsLogId: log.id, tenantId, recipient: phone, message
-      });
-      jobs.push({ phone, logId: log.id, jobId: job.id });
-    }
+   // In sms.controller.js — update the for loop in sendEventSMS
+for (const phone of recipients) {
+  const normalized = normalizePhone(phone);
+
+  try {
+    const log = await createSmsLog(tenantId, {
+      recipient: normalized,
+      message,
+      type:     'event_notification',
+      sent_by:  sentBy ?? null
+    });
+    console.log('[sendEventSMS] Log created:', log.id);
+
+    const job = await enqueueSms({
+      smsLogId:  log.id,
+      tenantId,
+      recipient: normalized,
+      message
+    });
+    console.log('[sendEventSMS] Job queued:', job.id);
+
+    jobs.push({ phone: normalized, logId: log.id, jobId: job.id });
+
+  } catch (loopErr) {
+    console.error('[sendEventSMS] Failed for', normalized, ':', loopErr.message);
+  }
+}
 
     return res.status(202).json({
       success: true,
