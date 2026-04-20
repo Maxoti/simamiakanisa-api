@@ -183,9 +183,14 @@ async function getSmsLogByIdHandler(req, res) {
 // ─────────────────────────────────────────────────────────────
 // SEND EVENT SMS (bulk — queued)
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SEND EVENT SMS (bulk — queued)
+// ─────────────────────────────────────────────────────────────
 async function sendEventSMS(req, res) {
   const { eventId } = req.params;
-  const { tenantId, sentBy, eventName, eventDate, eventTime } = req.body;
+  const { tenantId, sentBy, eventName, eventDate, eventTime, recipients } = req.body;
+
+  console.log('[sendEventSMS] called:', { eventId, tenantId, eventName, recipientCount: recipients?.length });
 
   if (!tenantId || !eventId) {
     return res.status(400).json({ error: 'tenantId and eventId are required' });
@@ -195,57 +200,47 @@ async function sendEventSMS(req, res) {
     return res.status(400).json({ error: 'eventName, eventDate and eventTime are required' });
   }
 
+  if (!recipients?.length) {
+    return res.status(400).json({ error: 'No recipients provided' });
+  }
+
   try {
-    // 1. Fetch members from Supabase
-    const { data: members, error: membersError } = await db
-      .from('members')
-      .select('phone')
-      .eq('tenant_id', tenantId)
-      .not('phone', 'is', null)
-      .neq('phone', '');
-
-    if (membersError) throw membersError;
-
-    if (!members?.length) {
-      return res.status(400).json({ error: 'No members with phone numbers found' });
-    }
-
-    // 2. Build message from body data
     const message =
-      `Reminder: "${eventName}" on ${eventDate} at ${eventTime}. ` +
-      `God bless you!`;
+      `Reminder: "${eventName}" on ${eventDate} at ${eventTime}. God bless you!`;
 
-    // 3. Enqueue per recipient
+    console.log('[sendEventSMS] message built, loading queue...');
     const { enqueueSms } = getQueue();
+    console.log('[sendEventSMS] queue loaded');
+
     const jobs = [];
 
-   // In sms.controller.js — update the for loop in sendEventSMS
-for (const phone of recipients) {
-  const normalized = normalizePhone(phone);
+    for (const phone of recipients) {
+      const normalized = normalizePhone(phone);
+      console.log('[sendEventSMS] processing:', normalized);
 
-  try {
-    const log = await createSmsLog(tenantId, {
-      recipient: normalized,
-      message,
-      type:     'event_notification',
-      sent_by:  sentBy ?? null
-    });
-    console.log('[sendEventSMS] Log created:', log.id);
+      try {
+        const log = await createSmsLog(tenantId, {
+          recipient: normalized,
+          message,
+          type:     'event_notification',
+          sent_by:  sentBy ?? null
+        });
+        console.log('[sendEventSMS] log created:', log.id);
 
-    const job = await enqueueSms({
-      smsLogId:  log.id,
-      tenantId,
-      recipient: normalized,
-      message
-    });
-    console.log('[sendEventSMS] Job queued:', job.id);
+        const job = await enqueueSms({
+          smsLogId:  log.id,
+          tenantId,
+          recipient: normalized,
+          message
+        });
+        console.log('[sendEventSMS] job queued:', job.id);
 
-    jobs.push({ phone: normalized, logId: log.id, jobId: job.id });
+        jobs.push({ phone: normalized, logId: log.id, jobId: job.id });
 
-  } catch (loopErr) {
-    console.error('[sendEventSMS] Failed for', normalized, ':', loopErr.message);
-  }
-}
+      } catch (loopErr) {
+        console.error('[sendEventSMS] failed for', normalized, ':', loopErr.message);
+      }
+    }
 
     return res.status(202).json({
       success: true,
@@ -256,6 +251,7 @@ for (const phone of recipients) {
 
   } catch (err) {
     console.error('[SmsController] sendEventSMS error:', err.message);
+    console.error('[SmsController] sendEventSMS stack:', err.stack);
     return res.status(500).json({ error: 'Failed to send event SMS' });
   }
 }
