@@ -22,7 +22,7 @@ smsQueue.process(async (job) => {
 
   try {
     const result = await sendToMobiWave({
-      recipients: [{ phone: recipient }],
+      recipient,
       message
     });
 
