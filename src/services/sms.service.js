@@ -28,7 +28,7 @@ function normalizePhone(phone) {
  * can report partial failures without throwing globally.
  *
  * @param {string}   tenantId
- * @param {string[]} recipients  - Raw phone numbers (any format)
+ * @param {string[]} recipient  - Raw phone numbers (any format)
  * @param {string}   message
  * @param {import('../models/sms.model').SmsType} type
  * @param {string}   [sentBy]    - Staff UID

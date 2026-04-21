@@ -5,7 +5,7 @@ let queue;
 function getSmsQueue() {
   if (!queue) {
     const redisUrl = process.env.REDIS_URL;
-    console.log('[Queue] REDIS_URL:', redisUrl ? 'SET ✅' : 'MISSING ❌');
+    console.log('[Queue] REDIS_URL:', redisUrl ? 'SET ' : 'MISSING ');
 
     if (!redisUrl) {
       throw new Error('REDIS_URL is not set');
