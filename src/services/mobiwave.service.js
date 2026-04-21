@@ -33,7 +33,7 @@ async function sendToMobiWave({ recipients, message }) {
     });
 
     const data = await response.json().catch(() => null);
-
+console.log('[Mobiwave] Response:', JSON.stringify(data));
     if (!response.ok) {
       throw new Error(`MobiWave error ${response.status}: ${JSON.stringify(data)}`);
     }
