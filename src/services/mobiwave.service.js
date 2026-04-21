@@ -4,9 +4,9 @@ const {
   MOBIWAVE_SENDER_ID
 } = require('../config/env');
 
-async function sendToMobiWave({ recipients, message }) {
-  if (!Array.isArray(recipients) || recipients.length === 0) {
-    throw new Error('Invalid recipients list');
+async function sendToMobiWave({ recipient, message }) {
+  if (!recipient) {
+    throw new Error('Invalid recipient');
   }
 
   if (!message || typeof message !== 'string') {
