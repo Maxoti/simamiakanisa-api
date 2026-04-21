@@ -1,6 +1,6 @@
 const {
-  MOBIWAVE_API_URL,
-  MOBIWAVE_API_TOKEN,
+  MOBIWAVE_BASE_URL,   // ✅ matches env.js
+  MOBIWAVE_API_KEY,    // ✅ matches env.js
   MOBIWAVE_SENDER_ID
 } = require('../config/env');
 
@@ -14,18 +14,18 @@ async function sendToMobiWave({ recipients, message }) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout    = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const response = await fetch(MOBIWAVE_API_URL, {
+    const response = await fetch(MOBIWAVE_BASE_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${MOBIWAVE_API_TOKEN}`,
+        Authorization: `Bearer ${MOBIWAVE_API_KEY}`,
         'Content-Type': 'application/json',
-        Accept: 'application/json'
+        Accept:         'application/json'
       },
       body: JSON.stringify({
-        sender_id: MOBIWAVE_SENDER_ID,
+        sender_id:  MOBIWAVE_SENDER_ID,
         message,
         recipients
       }),
@@ -39,6 +39,7 @@ async function sendToMobiWave({ recipients, message }) {
     }
 
     return data;
+
   } finally {
     clearTimeout(timeout);
   }
