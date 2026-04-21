@@ -1,7 +1,10 @@
 async function start() {
   try {
-    const app = require('./src/app');
+    const app    = require('./src/app');
     const { PORT } = require('./src/config/env');
+
+    // ✅ Start SMS queue worker
+    require('./src/workers/sms.worker');
 
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

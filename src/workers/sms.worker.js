@@ -2,8 +2,8 @@ const Bull   = require('bull');
 const env    = require('../config/env');
 const { sendToMobiWave }              = require('../services/mobiwave.service');
 const { markSent, markFailed }        = require('../models/sms.model');
-const { smsQueue }                    = require('../queues/sms.queue');
-
+const { getSmsQueue } = require('../queues/sms.queue');
+const smsQueue = getSmsQueue();
 /**
  * SMS Worker — processes jobs from smsQueue.
  *
