@@ -1,19 +1,36 @@
 const Bull = require('bull');
-const Redis = require('ioredis');
 
 let queue;
 
 function getSmsQueue() {
   if (!queue) {
-    const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+    const redisUrl = process.env.REDIS_URL;
+    console.log('[Queue] REDIS_URL:', redisUrl ? 'SET ' : 'MISSING ❌ using localhost');
+
+    if (!redisUrl) {
+      throw new Error('REDIS_URL is not set');
+    }
+
+    const url = new URL(redisUrl);
+    const isTLS = redisUrl.startsWith('rediss://');
+
     queue = new Bull('smsQueue', {
-      redis: redis.options
+      redis: {
+        host:     url.hostname,
+        port:     parseInt(url.port) || 6379,
+        password: decodeURIComponent(url.password),
+        username: url.username || 'default',
+        tls:      isTLS ? { rejectUnauthorized: false } : undefined
+      }
     });
+
+    queue.on('error',  err  => console.error('[Queue] error:', err.message));
+    queue.on('ready',  ()   => console.log('[Queue] Connected to Redis ✅'));
+    queue.on('failed', (job, err) => console.error('[Queue] job failed:', err.message));
   }
   return queue;
 }
 
-// ── Enqueue a single SMS job ──────────────────────────────────
 async function enqueueSms(data) {
   const q = getSmsQueue();
   const job = await q.add(data, {
@@ -23,7 +40,6 @@ async function enqueueSms(data) {
   return job;
 }
 
-// ── Get queue stats ───────────────────────────────────────────
 async function getQueueStats() {
   const q = getSmsQueue();
   const [waiting, active, completed, failed] = await Promise.all([
