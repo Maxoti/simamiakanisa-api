@@ -1,38 +1,34 @@
-const { sendToMobiWave }                        = require('./mobiwave.service');
-const { createSmsLog, markSent, markFailed }    = require('../models/sms.model');
+const { sendToMobiWave }                     = require('./mobiwave.service');
+const { createSmsLog, markSent, markFailed } = require('../models/sms.model');
 
 /**
  * Normalize any Kenyan phone format → E.164 digits without leading +
- * e.g.  0712345678   → 254712345678
+ * e.g.  0712345678    → 254712345678
  *       +254712345678 → 254712345678
- *       254712345678  → 254712345678
+ *       254712345678  → 254712345678  (unchanged)
  * @param {string} phone
  * @returns {string}
  */
 function normalizePhone(phone) {
   const stripped = phone.trim().replace(/\s+/g, '');
-  if (stripped.startsWith('0'))  return '254' + stripped.slice(1);
-  if (stripped.startsWith('+'))  return stripped.slice(1);
+  if (stripped.startsWith('0'))   return '254' + stripped.slice(1);
+  if (stripped.startsWith('+'))   return stripped.slice(1);
   return stripped;
 }
 
 /**
  * Send one or many SMS messages.
- *
  * Flow per recipient:
- *   1. Insert sms_logs row  (status = pending)
+ *   1. Insert sms_logs row (status = pending)
  *   2. Send to Mobiwave
  *   3. markSent / markFailed based on result
  *
- * Returns a per-recipient result array so the controller
- * can report partial failures without throwing globally.
- *
  * @param {string}   tenantId
- * @param {string[]} recipient  - Raw phone numbers (any format)
+ * @param {string[]} recipients - Raw phone numbers (any format)
  * @param {string}   message
- * @param {import('../models/sms.model').SmsType} type
- * @param {string}   [sentBy]    - Staff UID
- * @returns {Promise<Array<{ phone: string, logId: string, success: boolean, error?: string }>>}
+ * @param {string}   type
+ * @param {string}   [sentBy]
+ * @returns {Promise<Array<{ phone, logId, success, error? }>>}
  */
 async function sendSmsService(tenantId, recipients, message, type, sentBy) {
   const results = [];
@@ -41,7 +37,6 @@ async function sendSmsService(tenantId, recipients, message, type, sentBy) {
     const phone = normalizePhone(raw);
     let log;
 
-    // 1. Create the log row first — always have an audit trail
     try {
       log = await createSmsLog(tenantId, {
         recipient: phone,
@@ -55,10 +50,9 @@ async function sendSmsService(tenantId, recipients, message, type, sentBy) {
       continue;
     }
 
-    // 2. Dispatch to Mobiwave
     try {
       const result = await sendToMobiWave({
-        recipients: [{ phone }],
+        recipient: phone,   // ← singular string, matches mobiwave.service.js
         message
       });
 
